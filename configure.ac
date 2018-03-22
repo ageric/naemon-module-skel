@@ -1,5 +1,5 @@
 AC_PREREQ([2.59])
-AC_INIT([modulename], m4_esyscmd([./generate_version_number.sh]), [you@example.com])
+AC_INIT([tcm], [0.1], [you@example.com])
 AC_CONFIG_SRCDIR([module.c])
 AM_INIT_AUTOMAKE([subdir-objects])
 
@@ -41,18 +41,18 @@ AS_IF([test "x$naemon_cfg" == "x"],
 AC_SUBST(naemon_cfg)
 AC_SYS_LARGEFILE
 
-AC_ARG_ENABLE(auto_postinstall, AS_HELP_STRING([--disable-auto-postinstall], [Don't try to modify naemon's configuration or setup the SQL database. If you disable this, you must manually run the install-merlin.sh script in the source distribution after installation. You should disable this if you build redistributable packages.]))
+AC_ARG_ENABLE(auto_postinstall, AS_HELP_STRING([--disable-auto-postinstall], [Don't try to modify naemon's configuration or setup the SQL database. If you disable this, you must manually run the install-tcm.sh script in the source distribution after installation. You should disable this if you build redistributable packages.]))
 AM_CONDITIONAL(AUTO_POSTINSTALL, [test "x$enable_auto_postinstall" != "xno"])
 
 AC_ARG_WITH(naemon-config-dir, AS_HELP_STRING([--with-naemon-config-dir], [Install config into this directory)]), [naemonconfdir=$withval], [naemonconfdir=`AS_DIRNAME([${naemon_cfg}])`])
 AC_SUBST(naemonconfdir)
 
-AC_ARG_WITH(naemon-user, AS_HELP_STRING([--with-naemon-user], [The (system) user naemon runs as, which merlin will run as, too (default=autodetect)]), [naemon_user=$withval], [naemon_user=`$PKG_CONFIG --variable=naemon_user naemon`])
+AC_ARG_WITH(naemon-user, AS_HELP_STRING([--with-naemon-user], [The (system) user naemon runs as, which tcm will run as, too (default=autodetect)]), [naemon_user=$withval], [naemon_user=`$PKG_CONFIG --variable=naemon_user naemon`])
 AC_SUBST(naemon_user)
-AC_ARG_WITH(naemon-group, AS_HELP_STRING([--with-naemon-group], [The (system) group naemon runs as, which merlin will run as, too (default=autodetect)]), [naemon_group=$withval], [naemon_group=`$PKG_CONFIG --variable=naemon_group naemon`])
+AC_ARG_WITH(naemon-group, AS_HELP_STRING([--with-naemon-group], [The (system) group naemon runs as, which tcm will run as, too (default=autodetect)]), [naemon_group=$withval], [naemon_group=`$PKG_CONFIG --variable=naemon_group naemon`])
 AC_SUBST(naemon_group)
 
-AC_ARG_WITH(pkgconfdir, AS_HELP_STRING([--with-pkgconfdir], [The directory where merlin installs its configuration (default=${sysconfdir}/merlin)]), [pkgconfdir=$withval], [pkgconfdir=\${sysconfdir}/merlin])
+AC_ARG_WITH(pkgconfdir, AS_HELP_STRING([--with-pkgconfdir], [The directory where tcm installs its configuration (default=${sysconfdir}/tcm)]), [pkgconfdir=$withval], [pkgconfdir=\${sysconfdir}/tcm])
 AC_SUBST(pkgconfdir)
 
 AC_CONFIG_FILES([Makefile loadme.cfg])

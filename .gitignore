@@ -1,3 +1,26 @@
+/loadme.cfg
+/.deps
+/.libs
+/Makefile
+/Makefile.in
+/config.log
+/config.status
+/config.sub
+/config.guess
+/config.h
+/config.h.in
+/aclocal.m4
+/autom4te.cache
+/compile
+/configure
+/depcomp
+/install-sh
+/libtool
+/ltmain.sh
+/m4/
+/missing
+/stamp-h1
+
 # Prerequisites
 *.d
 

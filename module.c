@@ -3,6 +3,20 @@
 #include <naemon/naemon.h>
 
 NEB_API_VERSION(CURRENT_NEB_API_VERSION);
+/* for some reason not exported by Naemon itself */
+extern int __nagios_object_structure_version;
+
+/* entry point for our query handler queries */
+int tcm_qh_handler(int sd, char *query, unsigned int len)
+{
+	if (!strcmp(query, "help")) {
+		nsock_printf_nul(sd, "This is the cool module. Only cool people know about it. Sorry");
+		return 0;
+	}
+
+	/* add some actual queries here */
+	return 0;
+}
 
 /*
  * Called before and after Naemon has read object config and written its
@@ -12,7 +26,7 @@ NEB_API_VERSION(CURRENT_NEB_API_VERSION);
  */
 static int post_config_init(int cb, void *_ds)
 {
-	nebstruct_process_data *ds = (struct program_status_data *)_ds;
+	nebstruct_process_data *ds = (nebstruct_process_data *)_ds;
 
 	/* Only initialize when we're about to start the event loop */
 	if (ds->type != NEBTYPE_PROCESS_EVENTLOOPSTART) {
@@ -20,6 +34,11 @@ static int post_config_init(int cb, void *_ds)
 	}
 
 	/* do stuff here */
+	qh_register_handler("tcm", "The Cool Module", 0, tcm_qh_handler);
+	/* or not. Not all modules need setup */
+
+	/* now unregister. We don't care about this callback at runtime */
+	neb_deregister_callback(NEBCALLBACK_PROCESS_DATA, post_config_init);
 
 	return 0;
 }
@@ -40,6 +59,7 @@ static int post_config_init(int cb, void *_ds)
  * The "nebmodule *handle" is what we have to pass when registering and
  * de-registering callbacks, so stash it in a global var.
  */
+static void *neb_handle;
 int nebmodule_init(__attribute__((unused)) int flags, char *arg, nebmodule *handle)
 {
 	neb_handle = (void *)handle;
@@ -59,7 +79,7 @@ int nebmodule_init(__attribute__((unused)) int flags, char *arg, nebmodule *hand
 		return -1;
 	}
 
-	nm_log(NSLOG_INFO_MESSAGE, "Random module fooblarg loaded")
+	nm_log(NSLOG_INFO_MESSAGE, "Random module fooblarg loaded");
 
 	/*
 	 * This piece of tricker can be used to override the global
@@ -83,6 +103,5 @@ int nebmodule_init(__attribute__((unused)) int flags, char *arg, nebmodule *hand
  */
 int nebmodule_deinit(__attribute__((unused)) int flags, __attribute__((unused)) int reason)
 {
-	unsigned int i;
 	return 0;
 }

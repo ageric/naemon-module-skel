@@ -2,15 +2,15 @@ AM_CFLAGS += $(CFLAGS) -I$(srcdir)/shared $(naemon_CFLAGS)
 AM_CPPFLAGS += $(CPPFLAGS)
 ACLOCAL_AMFLAGS = -I m4
 
-pkglib_LTLIBRARIES = merlin.la
+pkglib_LTLIBRARIES = tcm.la
 
-module_la_LDFLAGS = -module -shared -fPIC
-module_la_CFLAGS = $(AM_CFLAGS)
-module_la_CPPFLAGS = $(AM_CPPFLAGS)
+tcm_la_LDFLAGS = -module -shared -fPIC
+tcm_la_CFLAGS = $(AM_CFLAGS)
+tcm_la_CPPFLAGS = $(AM_CPPFLAGS)
 
-module_sources = module.c
+tcm_sources = module.c
 
-merlin_la_SOURCES = $(module_sources)
+tcm_la_SOURCES = $(tcm_sources)
 
 install-exec-hook:
 	$(mkinstalldirs) -o $(naemon_user):$(naemon_group) $(DESTDIR)$(binlogdir)
