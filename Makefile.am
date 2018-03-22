@@ -4,6 +4,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 pkglib_LTLIBRARIES = tcm.la
 
+bin_PROGRAMS = qh-connect
 tcm_la_LDFLAGS = -module -shared -fPIC
 tcm_la_CFLAGS = $(AM_CFLAGS)
 tcm_la_CPPFLAGS = $(AM_CPPFLAGS)

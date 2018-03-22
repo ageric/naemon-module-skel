@@ -1,1 +1,2 @@
-/usr/share/automake-1.15/INSTALL
+Use loadme.cfg (but hey, name it something cooler) and then
+drop that in your naemon include dir.

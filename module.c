@@ -5,6 +5,65 @@
 NEB_API_VERSION(CURRENT_NEB_API_VERSION);
 /* for some reason not exported by Naemon itself */
 extern int __nagios_object_structure_version;
+static char **tcm_path_cache;
+int chan_opath_checks_id;
+
+struct tcm_parent_struct {
+	struct host *orig_host;
+	struct host *hst;
+};
+
+static gboolean treewalker(gpointer key, gpointer hst_, gpointer user_data)
+{
+	struct host *hst = (struct host *)hst_;
+	struct tcm_parent_struct *tcm_parent = (struct tcm_parent_struct *)user_data;
+	tcm_parent->hst = hst;
+	return FALSE;
+}
+
+static struct host *get_first_parent(struct host *h)
+{
+	struct tcm_parent_struct tcm_parent;
+	if (!h->parent_hosts)
+		return NULL;
+	tcm_parent.orig_host = h;
+	g_tree_foreach(h->parent_hosts, treewalker, &tcm_parent);
+	return tcm_parent.hst;
+}
+
+static char *tcm_path(host *leaf, char sep)
+{
+	host *h = leaf, *last_host = NULL;
+	struct tcm_parent_struct tcm_parent;
+	char *ret;
+	char *first_parent_name = NULL;
+	unsigned int path_len = 0, pos = 0;
+	objectlist *stack = NULL, *list, *next;
+
+	if (!leaf->parent_hosts)
+		return strdup(h->name);
+
+	for (h = leaf; h; h = get_first_parent(h)) {
+		if (h == last_host) {
+			break;
+		}
+		last_host = h;
+		path_len += strlen(h->name) + 1;
+		prepend_object_to_objectlist(&stack, h->name);
+	}
+
+	ret = nm_malloc(path_len + 1);
+	for (list = stack; list; list = next) {
+		char *ppart = (char *)list->object_ptr;
+		next = list->next;
+		free(list);
+		ret[pos++] = sep;
+		memcpy(ret + pos, ppart, strlen(ppart));
+		pos += strlen(ppart);
+	}
+	ret[pos++] = 0;
+	return ret;
+}
 
 /* entry point for our query handler queries */
 int tcm_qh_handler(int sd, char *query, unsigned int len)
@@ -14,7 +73,54 @@ int tcm_qh_handler(int sd, char *query, unsigned int len)
 		return 0;
 	}
 
-	/* add some actual queries here */
+	if (!strcmp(query, "dumpcache")) {
+		unsigned int i;
+		for (i = 0; i < num_objects.hosts; i++) {
+			struct host *hst = host_ary[i];
+			nsock_printf(sd, "%s == %s\n", hst->name, tcm_path_cache[i]);
+		}
+		return 0;
+	}
+	return 0;
+}
+
+static int chan_opath_checks(int cb, void *data)
+{
+	const int red = 0xff0000, green = 0xff00, blue = 0xff, pale = 0x555555;
+	unsigned int color;
+	check_result *cr;
+	host *h;
+	const char *name = "_HOST_";
+	char *buf = NULL;
+
+	if (cb == NEBCALLBACK_HOST_CHECK_DATA) {
+		nebstruct_host_check_data *ds = (nebstruct_host_check_data *)data;
+
+		if (ds->type != NEBTYPE_HOSTCHECK_PROCESSED)
+			return 0;
+
+		cr = ds->check_result_ptr;
+		h = ds->object_ptr;
+		color = red | green;
+	} else if (cb == NEBCALLBACK_SERVICE_CHECK_DATA) {
+		nebstruct_service_check_data *ds = (nebstruct_service_check_data *)data;
+		service *s;
+
+		if (ds->type != NEBTYPE_SERVICECHECK_PROCESSED)
+			return 0;
+		s = (service *)ds->object_ptr;
+		h = s->host_ptr;
+		cr = ds->check_result_ptr;
+		color = (red | green | blue) ^ pale;
+		name = s->description;
+	} else {
+		return 0;
+	}
+
+	nm_asprintf(&buf, "%lu|%s|M|%s/%s|%06X\n", cr->finish_time.tv_sec,
+		check_result_source(cr), tcm_path_cache[h->id], name, color);
+	nerd_broadcast(chan_opath_checks_id, buf, strlen(buf));
+	free(buf);
 	return 0;
 }
 
@@ -27,6 +133,7 @@ int tcm_qh_handler(int sd, char *query, unsigned int len)
 static int post_config_init(int cb, void *_ds)
 {
 	nebstruct_process_data *ds = (nebstruct_process_data *)_ds;
+	unsigned int i;
 
 	/* Only initialize when we're about to start the event loop */
 	if (ds->type != NEBTYPE_PROCESS_EVENTLOOPSTART) {
@@ -35,7 +142,15 @@ static int post_config_init(int cb, void *_ds)
 
 	/* do stuff here */
 	qh_register_handler("tcm", "The Cool Module", 0, tcm_qh_handler);
-	/* or not. Not all modules need setup */
+
+	tcm_path_cache = calloc(sizeof(char *), num_objects.hosts);
+	for (i = 0; i < num_objects.hosts; i++) {
+		struct host *h = host_ary[i];
+		tcm_path_cache[i] = tcm_path(h, '/');
+	}
+
+	chan_opath_checks_id = nerd_mkchan("tcm", "feed me to 'gource --log-format custom'", chan_opath_checks,
+		nebcallback_flag(NEBCALLBACK_HOST_CHECK_DATA) | nebcallback_flag(NEBCALLBACK_SERVICE_CHECK_DATA));
 
 	/* now unregister. We don't care about this callback at runtime */
 	neb_deregister_callback(NEBCALLBACK_PROCESS_DATA, post_config_init);
@@ -94,7 +209,6 @@ int nebmodule_init(__attribute__((unused)) int flags, char *arg, nebmodule *hand
 
 	return 0;
 }
-
 
 /**
  * Called prior to us being unloaded. This function has to exist in all modules
