@@ -33,10 +33,10 @@
 
 static int nsock_unix(const char *path, unsigned int flags)
 {
-	struct sockaddr_un saun;;	
 	struct sockaddr *sa;
 	int sock = 0, mode;
 	socklen_t slen;
+	struct sockaddr_un saun;;
 
 	if (!path)
 		return NSOCK_EINVAL;
@@ -101,7 +101,6 @@ int main(int argc, char **argv)
 	int sock;
 	int pos = 0, i, buflen = 0;
 	int ret;
-	int written;
 
 	if (argc < 3) {
 		printf("Need path to socket to connect to as first argument (and stuff to send as the rest)\n");
@@ -134,7 +133,8 @@ int main(int argc, char **argv)
 		ret = read(sock, inbuf, sizeof(inbuf));
 		if (ret < 0)
 			break;
-		written = write(fileno(stdout), inbuf, ret);
+		if (write(fileno(stdout), inbuf, ret) < 0)
+			break;
 	}
 
 	close(sock);

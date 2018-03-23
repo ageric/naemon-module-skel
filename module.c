@@ -9,7 +9,6 @@ static char **tcm_path_cache;
 int chan_opath_checks_id;
 
 struct tcm_parent_struct {
-	struct host *orig_host;
 	struct host *hst;
 };
 
@@ -18,36 +17,31 @@ static gboolean treewalker(gpointer key, gpointer hst_, gpointer user_data)
 	struct host *hst = (struct host *)hst_;
 	struct tcm_parent_struct *tcm_parent = (struct tcm_parent_struct *)user_data;
 	tcm_parent->hst = hst;
-	return FALSE;
+
+	/* we're only getting first parent. Returning TRUE means we break the walk */
+	return TRUE;
 }
 
 static struct host *get_first_parent(struct host *h)
 {
-	struct tcm_parent_struct tcm_parent;
-	if (!h->parent_hosts)
-		return NULL;
-	tcm_parent.orig_host = h;
+	/*
+	 * Must be initialized, otherwise the root host of a
+	 * chain will return itself, causing an infinite loop
+	 */
+	struct tcm_parent_struct tcm_parent = { NULL };
+
 	g_tree_foreach(h->parent_hosts, treewalker, &tcm_parent);
 	return tcm_parent.hst;
 }
 
 static char *tcm_path(host *leaf, char sep)
 {
-	host *h = leaf, *last_host = NULL;
-	struct tcm_parent_struct tcm_parent;
+	host *h = leaf;
 	char *ret;
-	char *first_parent_name = NULL;
 	unsigned int path_len = 0, pos = 0;
 	objectlist *stack = NULL, *list, *next;
 
-	if (!leaf->parent_hosts)
-		return strdup(h->name);
-
 	for (h = leaf; h; h = get_first_parent(h)) {
-		if (h == last_host) {
-			break;
-		}
-		last_host = h;
 		path_len += strlen(h->name) + 1;
 		prepend_object_to_objectlist(&stack, h->name);
 	}
